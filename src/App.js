@@ -4,22 +4,18 @@ import io from "socket.io-client";
 import { MapContainer, TileLayer, Marker } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
 
-// Socket initialisieren
-const socket = io("https://hideandseek-app.onrender.com");
+const socket = io("https://hideandseek-app.onrender.com"); // Backend-Link
 
 function App() {
   const [teams, setTeams] = useState([]);
   const [teamName, setTeamName] = useState("");
-  const [teamId, setTeamId] = useState(null); // registriertes Team
-  const [countdown, setCountdown] = useState(5 * 60); // 5 Minuten in Sekunden
+  const [teamId, setTeamId] = useState(null);
+  const [countdown, setCountdown] = useState(5 * 60); // 5 Minuten
 
-  // --- Socket.io: Verbindung & Updates ---
+  // --- Socket.io Verbindung ---
   useEffect(() => {
     socket.on("connect", () => console.log("Connected:", socket.id));
-
     socket.on("updateTeams", (data) => setTeams(data));
-
-    // Optional: exakter Countdown von Backend
     socket.on("nextUpdate", (timestamp) => {
       const secondsLeft = Math.max(Math.floor((timestamp - Date.now()) / 1000), 0);
       setCountdown(secondsLeft);
@@ -32,37 +28,30 @@ function App() {
     };
   }, []);
 
-  // --- Countdown-Timer ---
+  // --- Countdown jede Sekunde runterzählen ---
   useEffect(() => {
     const interval = setInterval(() => {
-      setCountdown(prev => (prev > 0 ? prev - 1 : 5 * 60)); // reset nach 0
+      setCountdown(prev => (prev > 0 ? prev - 1 : 5 * 60));
     }, 1000);
     return () => clearInterval(interval);
   }, []);
 
-  // --- Standort alle 30 Sekunden senden ---
+  // --- Standort alle 5 Minuten senden ---
   useEffect(() => {
     if (teamId && navigator.geolocation) {
       const sendLocation = () => {
         navigator.geolocation.getCurrentPosition(
-          (position) => {
-            const { latitude, longitude } = position.coords;
-            socket.emit("updateLocation", {
-              teamId,
-              location: { lat: latitude, lng: longitude },
-            });
-            console.log("Standort gesendet:", latitude, longitude);
+          (pos) => {
+            const { latitude, longitude } = pos.coords;
+            socket.emit("updateLocation", { teamId, location: { lat: latitude, lng: longitude } });
           },
           (err) => console.error(err),
           { enableHighAccuracy: true }
         );
       };
 
-      // Sofort senden
-      sendLocation();
-
-      // Alle 30 Sekunden erneut senden
-      const interval = setInterval(sendLocation, 30 * 1000);
+      sendLocation(); // sofort senden
+      const interval = setInterval(sendLocation, 5 * 60 * 1000); // 5 Minuten
       return () => clearInterval(interval);
     }
   }, [teamId]);
@@ -71,14 +60,10 @@ function App() {
   const registerTeam = async () => {
     if (!teamName) return alert("Bitte Teamnamen eingeben!");
     try {
-      const res = await axios.post(
-        "https://hideandseek-app.onrender.com/register-team",
-        { name: teamName }
-      );
+      const res = await axios.post("https://hideandseek-app.onrender.com/register-team", { name: teamName });
       alert(res.data.message);
-
       setTeamId(res.data.team._id);
-      socket.emit("joinRoom", res.data.team._id); // Socket-Raum beitreten
+      socket.emit("joinRoom", res.data.team._id);
       setTeamName("");
     } catch (err) {
       console.error(err);
@@ -91,20 +76,13 @@ function App() {
       <h1>Hide & Seek Teams</h1>
 
       <div>
-        <input
-          type="text"
-          placeholder="Teamname"
-          value={teamName}
-          onChange={(e) => setTeamName(e.target.value)}
-        />
+        <input type="text" placeholder="Teamname" value={teamName} onChange={(e) => setTeamName(e.target.value)} />
         <button onClick={registerTeam}>Registrieren</button>
       </div>
 
       <h2>Teams Übersicht</h2>
-      <h3>
-        Nächste Standortaktualisierung in:{" "}
-        {Math.floor(countdown / 60)}:{(countdown % 60).toString().padStart(2, "0")}
-      </h3>
+      <h3>Nächste Standortaktualisierung in: {Math.floor(countdown / 60)}:{(countdown % 60).toString().padStart(2, "0")}</h3>
+
       <ul>
         {teams.map((t) => (
           <li key={t._id}>
@@ -114,11 +92,7 @@ function App() {
       </ul>
 
       <h2>Karte</h2>
-      <MapContainer
-        center={[0, 0]}
-        zoom={2}
-        style={{ height: "400px", width: "100%" }}
-      >
+      <MapContainer center={[0, 0]} zoom={2} style={{ height: "400px", width: "100%" }}>
         <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
         {teams.map((t) => (
           <Marker key={t._id} position={[t.location.lat, t.location.lng]} />
@@ -129,4 +103,5 @@ function App() {
 }
 
 export default App;
+
 
