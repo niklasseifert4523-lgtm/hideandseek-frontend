@@ -10,7 +10,8 @@ const socket = io("https://hideandseek-app.onrender.com");
 function App() {
   const [teams, setTeams] = useState([]);
   const [teamName, setTeamName] = useState("");
-  const [teamId, setTeamId] = useState(null); // ID vom registrierten Team
+  const [teamId, setTeamId] = useState(null); // registriertes Team
+  const [countdown, setCountdown] = useState(5 * 60); // 5 Minuten in Sekunden
 
   // --- Socket.io: Verbindung & Updates ---
   useEffect(() => {
@@ -18,13 +19,28 @@ function App() {
 
     socket.on("updateTeams", (data) => setTeams(data));
 
+    // Optional: exakter Countdown von Backend
+    socket.on("nextUpdate", (timestamp) => {
+      const secondsLeft = Math.max(Math.floor((timestamp - Date.now()) / 1000), 0);
+      setCountdown(secondsLeft);
+    });
+
     return () => {
       socket.off("connect");
       socket.off("updateTeams");
+      socket.off("nextUpdate");
     };
   }, []);
 
-  // --- Standort regelmäßig senden ---
+  // --- Countdown-Timer ---
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setCountdown(prev => (prev > 0 ? prev - 1 : 5 * 60)); // reset nach 0
+    }, 1000);
+    return () => clearInterval(interval);
+  }, []);
+
+  // --- Standort alle 30 Sekunden senden ---
   useEffect(() => {
     if (teamId && navigator.geolocation) {
       const sendLocation = () => {
@@ -61,7 +77,7 @@ function App() {
       );
       alert(res.data.message);
 
-      setTeamId(res.data.team._id); // Team-ID speichern
+      setTeamId(res.data.team._id);
       socket.emit("joinRoom", res.data.team._id); // Socket-Raum beitreten
       setTeamName("");
     } catch (err) {
@@ -85,6 +101,10 @@ function App() {
       </div>
 
       <h2>Teams Übersicht</h2>
+      <h3>
+        Nächste Standortaktualisierung in:{" "}
+        {Math.floor(countdown / 60)}:{(countdown % 60).toString().padStart(2, "0")}
+      </h3>
       <ul>
         {teams.map((t) => (
           <li key={t._id}>
@@ -94,7 +114,11 @@ function App() {
       </ul>
 
       <h2>Karte</h2>
-      <MapContainer center={[0, 0]} zoom={2} style={{ height: "400px", width: "100%" }}>
+      <MapContainer
+        center={[0, 0]}
+        zoom={2}
+        style={{ height: "400px", width: "100%" }}
+      >
         <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
         {teams.map((t) => (
           <Marker key={t._id} position={[t.location.lat, t.location.lng]} />
@@ -105,3 +129,4 @@ function App() {
 }
 
 export default App;
+
