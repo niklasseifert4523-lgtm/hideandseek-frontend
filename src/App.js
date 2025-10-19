@@ -6,8 +6,8 @@ import io from 'socket.io-client';
 import axios from 'axios';
 import 'leaflet/dist/leaflet.css';
 
-const socket = io('https://hideandseek-backend.onrender.com');
-axios.get('https://hideandseek-backend.onrender.com/api/challenges');
+const socket = io('https://hideandseek-app.onrender.com');
+axios.get('https://hideandseek-app.onrender.com/api/challenges');
 
 export default function App() {
 const [teams, setTeams] = useState([]);
