@@ -10,7 +10,7 @@ function App() {
   const [teams, setTeams] = useState([]);
   const [teamName, setTeamName] = useState("");
   const [teamId, setTeamId] = useState(null);
-  const [countdown, setCountdown] = useState(5 * 60); // 5 Minuten
+  const [countdown, setCountdown] = useState(0); // initial 0, bis Server Timestamp liefert
 
   // --- Socket.io Verbindung ---
   useEffect(() => {
@@ -31,7 +31,7 @@ function App() {
   // --- Countdown jede Sekunde runterzählen ---
   useEffect(() => {
     const interval = setInterval(() => {
-      setCountdown(prev => (prev > 0 ? prev - 1 : 5 * 60));
+      setCountdown(prev => (prev > 0 ? prev - 1 : 0));
     }, 1000);
     return () => clearInterval(interval);
   }, []);
@@ -76,12 +76,20 @@ function App() {
       <h1>Hide & Seek Teams</h1>
 
       <div>
-        <input type="text" placeholder="Teamname" value={teamName} onChange={(e) => setTeamName(e.target.value)} />
+        <input
+          type="text"
+          placeholder="Teamname"
+          value={teamName}
+          onChange={(e) => setTeamName(e.target.value)}
+        />
         <button onClick={registerTeam}>Registrieren</button>
       </div>
 
       <h2>Teams Übersicht</h2>
-      <h3>Nächste Standortaktualisierung in: {Math.floor(countdown / 60)}:{(countdown % 60).toString().padStart(2, "0")}</h3>
+      <h3>
+        Nächste Standortaktualisierung in:{" "}
+        {Math.floor(countdown / 60)}:{(countdown % 60).toString().padStart(2, "0")}
+      </h3>
 
       <ul>
         {teams.map((t) => (
@@ -103,5 +111,6 @@ function App() {
 }
 
 export default App;
+
 
 
